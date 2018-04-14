@@ -1,0 +1,40 @@
+machine:
+  timezone:
+    America/Toronto
+
+dependencies:
+  cache_directories:
+    - "~/.stack"
+  pre:
+    - wget https://github.com/commercialhaskell/stack/releases/download/v1.6.5/stack-1.6.5-linux-x86_64.tar.gz -O /tmp/stack.tar.gz
+    - mkdir /tmp/stack/
+    - tar -xvzf /tmp/stack.tar.gz -C /tmp/stack/
+    - sudo mv /tmp/stack/stack-1.6.5-linux-x86_64/stack /usr/local/bin/stack
+  override:
+    - stack build --no-system-ghc --only-configure --no-terminal --ghc-options='+RTS -M2048m -RTS'
+
+test:
+  override:
+    - stack build --no-terminal
+
+
+  post:
+    - git submodule init
+    - git submodule update
+    - cd _site/ && git checkout master
+    - stack exec site build
+
+deployment:
+  production:
+    branch: hakyll
+    commands:
+      - git config --global user.email circleci@circleci
+      - git config --global user.name CircleCI
+      - cd _site/ && git status
+      - cd _site/ && git add --all
+      - cd _site/ && git commit -m "Update(`date '+%F %T %Z'`) [ci skip]"
+      - cd _site/ && git push origin master
+      - git status
+      - git add _site/
+      - git commit -m "Update _site (`date '+%F %T %Z'` [ci skip]"
+      - git push origin hakyll
